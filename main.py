@@ -1,7 +1,5 @@
-import math
-import time
-
 import pygame
+import math
 import sys
 
 pygame.init()
@@ -80,7 +78,6 @@ class Scene:
 
 
 
-
 class GameObject:
     def __init__(self, type, color, points, params, display):
         self.type = type
@@ -122,59 +119,120 @@ class Ray(GameObject):
         super().__init__(type, color, points, params, display)
         self.type = "line"
 
-
-
 # <----------MAIN CYCLE ----------------->
+
+def shift(lst, steps):
+    if steps < 0:
+        steps = abs(steps)
+        for i in range(steps):
+            lst.append(lst.pop(0))
+    else:
+        for i in range(steps):
+            lst.insert(0, lst.pop())
 
 running = True
 while running:
     clock.tick(30)
+    keys = pygame.key.get_pressed()
     for event in pygame.event.get():
-        if event.type == pygame.QUIT:
+        if event.type == pygame.QUIT or keys[pygame.K_ESCAPE]:
             pygame.quit()
             quit()
 
-    main_scene = Scene(win)
+    def calculate_rays(cos, sin , r, center):
+        arc_points = []
+        for i in range(len(cos)):
+            x = center[0] + r * cos[i]
+            y = center[1] - r * sin[i]
+            points = [center, [x, y]]
+            for rect in rects:
+                clip_line = rect.clipline(center[0], center[1], x, y)
+                if len(clip_line) != 0:
+                    start, end = clip_line
+                    points = [center, start]
+
+            if i == 0 or i == len(cosinuses) - 1:
+                ray = Ray(WHITE, points, 1, True)
+            else:
+                ray = Ray(WHITE, points, 1, True)
+            arc_points.append(points[1])
+            objects.append(ray)
+        return arc_points
 
     #<------MAIN GAME SCENE--------->
-    obs1 = GameObject("rect", WHITE, [[800, 200]], [300, 50], True)
-    obs2 = GameObject("rect", WHITE, [[800, 400]], [50, 200], True)
-    obs3 = GameObject("rect", WHITE, [[1300, 200]], [50, 400], True)
-    obs4 = GameObject("rect", WHITE, [[200, 800]], [600, 50], True)
-    obs5 = GameObject("rect", WHITE, [[400, 400]], [50, 300], True)
-    obs6 = GameObject("rect", WHITE, [[400, 100]], [200, 50], True)
-    obs7 = GameObject("circle", WHITE, [[200, 300]], 80, True)
+    # <------MAIN GAME SCENE--------->
+    rect1 = pygame.Rect(800, 200, 300, 50)
+    rect2 = pygame.Rect(800, 500, 50, 200)
+    rect3 = pygame.Rect(1300, 200, 50, 200)
+    rect4 = pygame.Rect(200, 800, 300, 50)
+    rect5 = pygame.Rect(400, 400, 50, 300)
+    rect6 = pygame.Rect(400, 100, 200, 50)
+    rect7 = pygame.Rect(200, 300, (math.sqrt(2) * 80) / 2, (math.sqrt(2) * 80) / 2)
+
+    rects = [rect1, rect2, rect3, rect4, rect5,rect7, rect6]
+
+    obs1 = GameObject("rect", WHITE, [[rect1.x, rect1.y]], [rect1.w, rect1.h], True)
+    obs2 = GameObject("rect", RED, [[rect2.x, rect2.y]], [rect2.w, rect2.h], True)
+    obs3 = GameObject("rect", YELLOW, [[rect3.x, rect3.y]], [rect3.w, rect3.h], True)
+    obs4 = GameObject("rect", GREEN, [[rect4.x, rect4.y]], [rect4.w, rect4.h], True)
+    obs5 = GameObject("rect", GRAY, [[rect5.x, rect5.y]], [rect5.w, rect5.h], True)
+    obs6 = GameObject("rect", LIGHT_BLUE, [[rect6.x, rect6.y]], [rect6.w, rect6.h], True)
+    obs7 = GameObject("circle", WHITE, [[rect7.x, rect7.y]], 80, True)
     # <------MAIN GAME SCENE--------->
 
     # <----------GAME CONTROLS ----------------->
-    keys = pygame.key.get_pressed()
 
+    keys = pygame.key.get_pressed()
     if keys[pygame.K_w] and y_c >= 15:  # move up
         y_c -= speed
-        y_e -= speed
-
-    if keys[pygame.K_s] and y_c <= (dh - 15):  # move down
+    if keys[pygame.K_s] and y_c <= (dh - 15):
         y_c += speed
-        y_e += speed
-
     if keys[pygame.K_a] and x_c >= 15:  # move left
         x_c -= speed
-        x_e -= speed
-
     if keys[pygame.K_d] and x_c <= (dw - 15):  # move left
         x_c += speed
-        x_e += speed
 
-    # <----------GAME CONTROLS ----------------->
+    # <----------GAME CONTROLS ----------------->\a
+    objects = [obs7, obs1, obs2, obs4, obs5, obs6, obs3]
 
-    center = [x_c, y_c]
+    A = pygame.mouse.get_pos()
+    O = [x_c, y_c]
 
-    user = GameObject("circle", YELLOW, [[center[0], center[1]]], 15, True)
-    objects = [obs1, obs2, obs3, obs4, obs5, obs6, obs7, user]
+    OA = math.sqrt((A[0] - O[0]) ** 2 + (A[1] - O[1]) ** 2)
+    AB = O[1] - A[1]
+    OB = A[0] - O[0]
+    sin = AB / OA
+    cos = OB / OA
 
+    view_angle = 100  # degrees
+    ray_len = 700
+
+    # <--+--> first ray
+    cos_1 = (cos * math.cos(math.radians(view_angle / 2))) - (sin * math.sin(math.radians(view_angle / 2)))
+    sin_1 = (sin * math.cos(math.radians(view_angle / 2))) + (cos * math.sin(math.radians(view_angle / 2)))
+    # <--+-->
+    cosinuses = [cos_1]
+    sinuses = [sin_1]
+
+    for i in range(1, view_angle):
+        cos = (cos_1 * math.cos(math.radians(i)) + sin_1 * math.sin(math.radians(i)))
+        sin = (sin_1 * math.cos(math.radians(i)) - math.sin(math.radians(i)) * cos_1)
+        cosinuses.append(cos)
+        sinuses.append(sin)
+
+    cos_2 = (cos * math.cos(math.radians(view_angle / 2))) + (sin * math.sin(math.radians(view_angle / 2)))
+    sin_2 = (sin * math.cos(math.radians(view_angle / 2))) - (cos * math.sin(math.radians(view_angle / 2)))
+
+
+
+    arc_points = calculate_rays(cosinuses, sinuses, ray_len, O)
+    pygame.draw.aalines(win, RED, False,arc_points, 5)
+
+    main_scene = Scene(win)
+    user = GameObject("circle", YELLOW, [O], 15, True)
+    objects.append(user)
     for i in objects:
         main_scene.add(i)
-    main_scene.compare(objects)
     main_scene.show()
     pygame.display.update()
     win.fill((0, 0, 0))
